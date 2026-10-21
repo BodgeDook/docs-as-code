@@ -1,0 +1,159 @@
+openapi: 3.0.3
+
+info:
+  title: Spam Detection Service API
+  description: API сервиса гибридной фильтрации спама, управления персональным белым списком и контроля статусов писем.
+  version: 1.0.0
+
+servers:
+  - url: https://api.spam-detector.ru/v1
+
+paths:
+  /classifications:
+    post:
+      summary: Классификация входящего письма
+      description: Принимает входящее письмо от почтового сервера, проверяет белый список и передает текст в ML-модель для анализа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sender
+                - subject
+                - body
+              properties:
+                sender:
+                  type: string
+                  example: "news@promotions.com"
+                subject:
+                  type: string
+                  example: "Скидки 90% на всё!"
+                body:
+                  type: string
+                  example: "Только сегодня купите наш курс по инвестициям..."
+      responses:
+        '200':
+          description: Классификация и фильтрация успешно выполнены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationResult'
+        '400':
+          description: Некорректный формат запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса или недоступность ML-модели (срабатывание правила перестраховки)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classifications/{id}:
+    get:
+      summary: Получить результат классификации
+      description: Возвращает детальную информацию и вердикт по конкретной проверке письма по его уникальному идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Уникальный идентификатор проверки / письма
+          schema:
+            type: integer
+          example: 1042
+      responses:
+        '200':
+          description: Результат успешно найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationResult'
+        '404':
+          description: Результат проверки с указанным ID не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /whitelist:
+    post:
+      summary: Добавить адрес в белый список
+      description: Добавляет указанный адрес отправителя в персональный белый список и запускает автоматическое восстановление писем из корзины.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - emailAddress
+              properties:
+                emailAddress:
+                  type: string
+                  example: "friend@university.ru"
+      responses:
+        '201':
+          description: Адрес успешно добавлен в белый список
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "added"
+                  restoredCount:
+                    type: integer
+                    example: 3
+        '400':
+          description: Некорректный формат email-адреса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ClassificationResult:
+      type: object
+      required:
+        - id
+        - verdict
+        - confidenceScore
+        - modelVersion
+        - actionTaken
+      properties:
+        id:
+          type: integer
+          example: 1042
+        verdict:
+          type: string
+          enum: [spam, legitimate, whitelisted]
+          example: "spam"
+        confidenceScore:
+          type: number
+          format: float
+          example: 0.98
+        modelVersion:
+          type: string
+          example: "bert-spam-v2.1"
+        actionTaken:
+          type: string
+          example: "moved_to_trash"
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "MODEL_UNAVAILABLE"
+        message:
+          type: string
+          example: "ML service timeout, falling back to Inbox"

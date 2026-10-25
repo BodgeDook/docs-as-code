@@ -20,12 +20,13 @@ paths:
             schema:
               type: object
               required:
-                - sender
-                - subject
-                - body
+              - sender
+              - subject
+              - body
               properties:
                 sender:
                   type: string
+                  format: email
                   example: "news@promotions.com"
                 subject:
                   type: string
@@ -58,12 +59,12 @@ paths:
       summary: Получить результат классификации
       description: Возвращает детальную информацию и вердикт по конкретной проверке письма по его уникальному идентификатору.
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: Уникальный идентификатор проверки / письма
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        description: Уникальный идентификатор проверки / письма
+        schema:
+          type: integer
           example: 1042
       responses:
         '200':
@@ -90,10 +91,11 @@ paths:
             schema:
               type: object
               required:
-                - emailAddress
+              - emailAddress
               properties:
                 emailAddress:
                   type: string
+                  format: email
                   example: "friend@university.ru"
       responses:
         '201':
@@ -121,11 +123,11 @@ components:
     ClassificationResult:
       type: object
       required:
-        - id
-        - verdict
-        - confidenceScore
-        - modelVersion
-        - actionTaken
+      - id
+      - verdict
+      - confidenceScore
+      - modelVersion
+      - actionTaken
       properties:
         id:
           type: integer
@@ -137,19 +139,24 @@ components:
         confidenceScore:
           type: number
           format: float
+          minimum: 0
+          maximum: 1
+          nullable: true
           example: 0.98
         modelVersion:
           type: string
+          nullable: true
           example: "bert-spam-v2.1"
         actionTaken:
           type: string
+          enum: [moved_to_trash, delivered_to_inbox, whitelisted, restored]
           example: "moved_to_trash"
 
     ErrorResponse:
       type: object
       required:
-        - code
-        - message
+      - code
+      - message
       properties:
         code:
           type: string
